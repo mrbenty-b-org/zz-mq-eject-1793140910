@@ -1,0 +1,29 @@
+name: attmq
+on:
+  merge_group:
+  workflow_dispatch:
+permissions:
+  id-token: write
+  attestations: write
+  contents: read
+jobs:
+  mint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: payload
+        run: |
+          mkdir -p out
+          printf '%s\n' "MQ-EJECT-1793140910" > out/payload.bin
+          echo "MARKER-DIGEST-BEGIN"; sha256sum out/payload.bin; echo "MARKER-DIGEST-END"
+          echo "EVENT=${{ github.event_name }} REF=${{ github.ref }}"
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be
+        with:
+          subject-path: out/payload.bin
+  gate:
+    runs-on: ubuntu-latest
+    needs: mint
+    steps:
+      - name: deliberately fail so the queue EJECTS this entry
+        run: |
+          echo "GATE-FAILING-ON-PURPOSE"
+          exit 1
